@@ -3,7 +3,6 @@ const ROWS = 5;
 const CELL_SIZE = 90;
 
 const board = document.getElementById("board");
-
 const movesText = document.getElementById("moves");
 const timerText = document.getElementById("timer");
 
@@ -19,304 +18,225 @@ const victoryScreen = document.getElementById("victoryScreen");
 const levelSelect = document.getElementById("levelSelect");
 
 let currentLevel = 0;
-
 let pieces = [];
-
 let moves = 0;
-
 let timer = 0;
-
 let timerInterval = null;
 
+/* ===============================
+   SETUP
+=============================== */
+
 function setupLevels() {
-
   LEVELS.forEach((level, index) => {
-
     const option = document.createElement("option");
-
     option.value = index;
-
     option.textContent = level.name;
-
     levelSelect.appendChild(option);
   });
 }
 
 function startGame() {
-
   currentLevel = Number(levelSelect.value);
-
   menuScreen.classList.add("hidden");
-
   gameScreen.classList.remove("hidden");
-
   loadLevel(currentLevel);
 }
 
 function loadLevel(index) {
-
   clearBoard();
 
-  pieces =
-    JSON.parse(
-      JSON.stringify(LEVELS[index].pieces)
-    );
+  pieces = JSON.parse(JSON.stringify(LEVELS[index].pieces));
 
   moves = 0;
-
   movesText.textContent = moves;
 
   startTimer();
 
   pieces.forEach(createPiece);
-
-  saveProgress();
 }
 
-function clearBoard() {
+/* ===============================
+   BOARD
+=============================== */
 
-  document
-    .querySelectorAll(".piece")
-    .forEach(piece => piece.remove());
+function clearBoard() {
+  document.querySelectorAll(".piece").forEach(p => p.remove());
 }
 
 function createPiece(piece) {
+  const el = document.createElement("div");
 
-  const element = document.createElement("div");
+  el.classList.add("piece", piece.color);
 
-  element.classList.add("piece");
+  el.style.width = `${piece.w * CELL_SIZE}px`;
+  el.style.height = `${piece.h * CELL_SIZE}px`;
 
-  element.classList.add(piece.color);
+  updatePiecePosition(el, piece);
+  addInput(el, piece);
 
-  element.style.width =
-    `${piece.w * CELL_SIZE}px`;
-
-  element.style.height =
-    `${piece.h * CELL_SIZE}px`;
-
-  updatePiecePosition(element, piece);
-
-  addInput(element, piece);
-
-  board.appendChild(element);
+  board.appendChild(el);
 }
 
 function updatePiecePosition(el, piece) {
-
-  el.style.left =
-    `${piece.x * CELL_SIZE}px`;
-
-  el.style.top =
-    `${piece.y * CELL_SIZE}px`;
+  el.style.left = `${piece.x * CELL_SIZE}px`;
+  el.style.top = `${piece.y * CELL_SIZE}px`;
 }
 
-function addInput(el, piece) {
+/* ===============================
+   INPUT (SWIPE MILLORAT)
+=============================== */
 
+function addInput(el, piece) {
   let startX = 0;
   let startY = 0;
 
   el.addEventListener("pointerdown", e => {
-
     startX = e.clientX;
     startY = e.clientY;
 
     function pointerUp(ev) {
-
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
 
       handleSwipe(piece, el, dx, dy);
 
-      window.removeEventListener(
-        "pointerup",
-        pointerUp
-      );
+      window.removeEventListener("pointerup", pointerUp);
     }
 
-    window.addEventListener(
-      "pointerup",
-      pointerUp
-    );
+    window.addEventListener("pointerup", pointerUp);
   });
 }
 
-function handleSwipe(piece, el, dx, dy) {
+/* ===============================
+   MOVIMENT FLUÏT (KEY FEATURE)
+=============================== */
 
+function handleSwipe(piece, el, dx, dy) {
   const threshold = 20;
+
+  if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+
+  let dirX = 0;
+  let dirY = 0;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (piece.direction === "vertical") return;
+    dirX = dx > 0 ? 1 : -1;
+  } else {
+    if (piece.direction === "horizontal") return;
+    dirY = dy > 0 ? 1 : -1;
+  }
 
   let newX = piece.x;
   let newY = piece.y;
 
-  if (Math.abs(dx) > Math.abs(dy)) {
+  // 🔥 mou fins al límit
+  while (true) {
+    const nextX = newX + dirX;
+    const nextY = newY + dirY;
 
-    if (Math.abs(dx) < threshold) return;
+    if (!isValidMove(piece, nextX, nextY)) break;
 
-    if (dx > 0) {
-
-      if (piece.direction !== "vertical") {
-        newX++;
-      }
-
-    } else {
-
-      if (piece.direction !== "vertical") {
-        newX--;
-      }
-    }
-
-  } else {
-
-    if (Math.abs(dy) < threshold) return;
-
-    if (dy > 0) {
-
-      if (piece.direction !== "horizontal") {
-        newY++;
-      }
-
-    } else {
-
-      if (piece.direction !== "horizontal") {
-        newY--;
-      }
-    }
+    newX = nextX;
+    newY = nextY;
   }
 
-  if (isValidMove(piece, newX, newY)) {
+  // si no s’ha mogut, sortir
+  if (newX === piece.x && newY === piece.y) return;
 
-    piece.x = newX;
-    piece.y = newY;
+  piece.x = newX;
+  piece.y = newY;
 
-    updatePiecePosition(el, piece);
+  updatePiecePosition(el, piece);
 
-    moves++;
+  moves++;
+  movesText.textContent = moves;
 
-    movesText.textContent = moves;
-
-    checkVictory();
-
-    saveProgress();
-  }
+  checkVictory();
 }
 
+/* ===============================
+   COL·LISIONS
+=============================== */
+
 function isValidMove(currentPiece, newX, newY) {
-
-  if (newX < 0) return false;
-  if (newY < 0) return false;
-
-  if (newX + currentPiece.w > COLS)
-    return false;
-
-  if (newY + currentPiece.h > ROWS)
-    return false;
+  if (newX < 0 || newY < 0) return false;
+  if (newX + currentPiece.w > COLS) return false;
+  if (newY + currentPiece.h > ROWS) return false;
 
   for (const piece of pieces) {
-
-    if (piece.id === currentPiece.id)
-      continue;
+    if (piece.id === currentPiece.id) continue;
 
     const overlap =
-
       newX < piece.x + piece.w &&
       newX + currentPiece.w > piece.x &&
       newY < piece.y + piece.h &&
       newY + currentPiece.h > piece.y;
 
-    if (overlap) {
-      return false;
-    }
+    if (overlap) return false;
   }
 
   return true;
 }
 
+/* ===============================
+   VICTÒRIA (ARREGLADA)
+=============================== */
+
 function checkVictory() {
+  const red = pieces.find(p => p.color === "red");
 
-  const red =
-    pieces.find(
-      piece => piece.color === "red"
-    );
-
-  if (red.x === 1 && red.y === 3) {
-
+  // 🎯 quan arriba a la sortida real
+  if (red.y + red.h === ROWS) {
     clearInterval(timerInterval);
-
-    victoryScreen
-      .classList
-      .remove("hidden");
-
-    localStorage.setItem(
-      "completedLevel",
-      currentLevel
-    );
+    victoryScreen.classList.remove("hidden");
   }
 }
 
-function startTimer() {
+/* ===============================
+   TIMER
+=============================== */
 
+function startTimer() {
   clearInterval(timerInterval);
 
   timer = 0;
-
   timerText.textContent = timer;
 
   timerInterval = setInterval(() => {
-
     timer++;
-
     timerText.textContent = timer;
-
   }, 1000);
 }
 
-function saveProgress() {
+/* ===============================
+   BOTONS
+=============================== */
 
-  localStorage.setItem(
-    "puzzle-progress",
-    JSON.stringify({
-      level: currentLevel,
-      moves,
-      timer
-    })
-  );
-}
+resetBtn.addEventListener("click", () => {
+  loadLevel(currentLevel);
+});
 
-resetBtn.addEventListener(
-  "click",
-  () => loadLevel(currentLevel)
-);
+menuBtn.addEventListener("click", () => {
+  gameScreen.classList.add("hidden");
+  victoryScreen.classList.add("hidden");
+  menuScreen.classList.remove("hidden");
+});
 
-menuBtn.addEventListener(
-  "click",
-  () => {
+nextLevelBtn.addEventListener("click", () => {
+  victoryScreen.classList.add("hidden");
 
-    gameScreen.classList.add("hidden");
+  currentLevel++;
+  if (currentLevel >= LEVELS.length) currentLevel = 0;
 
-    victoryScreen.classList.add("hidden");
+  loadLevel(currentLevel);
+});
 
-    menuScreen.classList.remove("hidden");
-  }
-);
+startBtn.addEventListener("click", startGame);
 
-nextLevelBtn.addEventListener(
-  "click",
-  () => {
-
-    victoryScreen.classList.add("hidden");
-
-    currentLevel++;
-
-    if (currentLevel >= LEVELS.length) {
-      currentLevel = 0;
-    }
-
-    loadLevel(currentLevel);
-  }
-);
-
-startBtn.addEventListener(
-  "click",
-  startGame
-);
+/* ===============================
+   INIT
+=============================== */
 
 setupLevels();
