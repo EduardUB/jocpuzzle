@@ -4,86 +4,58 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Neon Sliding Puzzle</title>
-
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- MENU -->
-  <div id="menuScreen" class="screen">
+<!-- MENU -->
+<div id="menuScreen" class="screen">
+  <h1>NEON SLIDE</h1>
+  <div class="menu-card">
+    <button id="startBtn">Start Game</button>
 
-    <h1>NEON SLIDE</h1>
+    <div class="level-box">
+      <label>Nivel</label>
+      <select id="levelSelect"></select>
+    </div>
+  </div>
+</div>
 
-    <div class="menu-card">
-
-      <button id="startBtn">Start Game</button>
-
-      <div class="level-box">
-        <label>Nivel</label>
-
-        <select id="levelSelect"></select>
-      </div>
-
+<!-- GAME -->
+<div id="gameScreen" class="hidden">
+  <div class="top-ui">
+    <div class="stat">
+      Movimientos: <span id="moves">0</span>
     </div>
 
+    <div class="stat">
+      Tiempo: <span id="timer">0</span>s
+    </div>
   </div>
 
-  <!-- GAME -->
-  <div id="gameScreen" class="hidden">
-
-    <div class="top-ui">
-
-      <div class="stat">
-        Movimientos:
-        <span id="moves">0</span>
-      </div>
-
-      <div class="stat">
-        Tiempo:
-        <span id="timer">0</span>s
-      </div>
-
+  <div id="boardWrapper">
+    <div id="board">
+      <div id="exitZone"></div>
     </div>
-
-    <div id="boardWrapper">
-
-      <div id="board">
-
-        <div id="exitZone"></div>
-
-      </div>
-
-    </div>
-
-    <div class="controls">
-
-      <button id="resetBtn">Reset</button>
-
-      <button id="menuBtn">Menu</button>
-
-    </div>
-
   </div>
 
-  <!-- VICTORY -->
-  <div id="victoryScreen" class="hidden">
-
-    <div class="victory-card">
-
-      <h2>VICTORIA</h2>
-
-      <p>Nivel completado</p>
-
-      <button id="nextLevelBtn">
-        Siguiente Nivel
-      </button>
-
-    </div>
-
+  <div class="controls">
+    <button id="resetBtn">Reset</button>
+    <button id="menuBtn">Menu</button>
   </div>
+</div>
 
-  <script src="levels.js"></script>
-  <script src="scripts.js"></script>
+<!-- VICTORY -->
+<div id="victoryScreen" class="hidden">
+  <div class="victory-card">
+    <h2>VICTORIA</h2>
+    <p>Nivel completado</p>
+    <button id="nextLevelBtn">Siguiente Nivel</button>
+  </div>
+</div>
+
+<script src="levels.js"></script>
+<script src="scripts.js"></script>
 
 </body>
 </html>
