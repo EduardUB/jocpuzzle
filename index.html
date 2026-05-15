@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Neon Sliding Puzzle</title>
+  <title>Klotski Puzzle</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <!-- MENU -->
 <div id="menuScreen" class="screen">
-  <h1>NEON SLIDE</h1>
+  <h1>KLOTSKI</h1>
+
   <div class="menu-card">
-    <button id="startBtn">Start Game</button>
+    <button id="startBtn">Jugar</button>
 
     <div class="level-box">
       <label>Nivel</label>
@@ -24,13 +26,8 @@
 <!-- GAME -->
 <div id="gameScreen" class="hidden">
   <div class="top-ui">
-    <div class="stat">
-      Movimientos: <span id="moves">0</span>
-    </div>
-
-    <div class="stat">
-      Tiempo: <span id="timer">0</span>s
-    </div>
+    <div class="stat">Movimientos: <span id="moves">0</span></div>
+    <div class="stat">Tiempo: <span id="timer">0</span>s</div>
   </div>
 
   <div id="boardWrapper">
@@ -49,8 +46,7 @@
 <div id="victoryScreen" class="hidden">
   <div class="victory-card">
     <h2>VICTORIA</h2>
-    <p>Nivel completado</p>
-    <button id="nextLevelBtn">Siguiente Nivel</button>
+    <button id="nextLevelBtn">Siguiente</button>
   </div>
 </div>
 
@@ -59,3 +55,4 @@
 
 </body>
 </html>
+
