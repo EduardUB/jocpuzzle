@@ -3,58 +3,41 @@ const ROWS = 5;
 const CELL = 80;
 
 const board = document.getElementById("board");
-const movesText = document.getElementById("moves");
-
-const startBtn = document.getElementById("startBtn");
-const resetBtn = document.getElementById("resetBtn");
-const menuBtn = document.getElementById("menuBtn");
-const nextLevelBtn = document.getElementById("nextLevelBtn");
-
-const menuScreen = document.getElementById("menuScreen");
-const gameScreen = document.getElementById("gameScreen");
-const victoryScreen = document.getElementById("victoryScreen");
-
-const levelSelect = document.getElementById("levelSelect");
 
 let pieces = [];
 let currentLevel = 0;
-let moves = 0;
 
-function setupLevels() {
-  LEVELS.forEach((l, i) => {
-    let opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = l.name;
-    levelSelect.appendChild(opt);
-  });
-}
+/* =========================
+   SETUP
+========================= */
 
 function startGame() {
-  currentLevel = Number(levelSelect.value);
-  menuScreen.classList.add("hidden");
-  gameScreen.classList.remove("hidden");
+  document.getElementById("menuScreen").classList.add("hidden");
+  document.getElementById("gameScreen").classList.remove("hidden");
   loadLevel();
 }
 
 function loadLevel() {
   board.innerHTML = '<div id="exitZone"></div>';
-
   pieces = JSON.parse(JSON.stringify(LEVELS[currentLevel].pieces));
-  moves = 0;
-  movesText.textContent = 0;
 
   pieces.forEach(createPiece);
 }
 
+/* =========================
+   CREAR PECES
+========================= */
+
 function createPiece(p) {
   const el = document.createElement("div");
+
   el.className = "piece " + p.color;
 
   el.style.width = p.w * CELL + "px";
   el.style.height = p.h * CELL + "px";
 
   update(el, p);
-  addInput(el, p);
+  enableDrag(el, p);
 
   board.appendChild(el);
 }
@@ -64,98 +47,119 @@ function update(el, p) {
   el.style.top = p.y * CELL + "px";
 }
 
-function addInput(el, p) {
-  let sx, sy;
+/* =========================
+   DRAG REAL (IMPORTANT)
+========================= */
+
+function enableDrag(el, piece) {
+  let startX, startY;
+  let startGridX, startGridY;
 
   el.addEventListener("pointerdown", e => {
-    sx = e.clientX;
-    sy = e.clientY;
+    e.preventDefault();
 
-    function up(ev) {
-      let dx = ev.clientX - sx;
-      let dy = ev.clientY - sy;
+    startX = e.clientX;
+    startY = e.clientY;
 
-      movePiece(p, el, dx, dy);
+    startGridX = piece.x;
+    startGridY = piece.y;
 
-      window.removeEventListener("pointerup", up);
+    function move(e2) {
+      const dx = e2.clientX - startX;
+      const dy = e2.clientY - startY;
+
+      let moveX = 0;
+      let moveY = 0;
+
+      // determinar direcció
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (piece.direction === "vertical") return;
+        moveX = Math.round(dx / CELL);
+      } else {
+        if (piece.direction === "horizontal") return;
+        moveY = Math.round(dy / CELL);
+      }
+
+      let newX = startGridX + moveX;
+      let newY = startGridY + moveY;
+
+      // limitar pel màxim possible
+      while (!isValid(piece, newX, newY)) {
+        if (moveX > 0) newX--;
+        if (moveX < 0) newX++;
+        if (moveY > 0) newY--;
+        if (moveY < 0) newY++;
+
+        if (newX === piece.x && newY === piece.y) break;
+      }
+
+      piece.x = newX;
+      piece.y = newY;
+
+      update(el, piece);
     }
 
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+
+      checkWin();
+    }
+
+    window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   });
 }
 
-function movePiece(p, el, dx, dy) {
-  let dirX = 0, dirY = 0;
-
-  if (Math.abs(dx) > Math.abs(dy)) {
-    if (p.direction === "vertical") return;
-    dirX = dx > 0 ? 1 : -1;
-  } else {
-    if (p.direction === "horizontal") return;
-    dirY = dy > 0 ? 1 : -1;
-  }
-
-  let nx = p.x;
-  let ny = p.y;
-
-  while (isValid(p, nx + dirX, ny + dirY)) {
-    nx += dirX;
-    ny += dirY;
-  }
-
-  if (nx === p.x && ny === p.y) return;
-
-  p.x = nx;
-  p.y = ny;
-
-  update(el, p);
-
-  moves++;
-  movesText.textContent = moves;
-
-  checkWin();
-}
+/* =========================
+   COL·LISIONS
+========================= */
 
 function isValid(p, x, y) {
   if (x < 0 || y < 0) return false;
   if (x + p.w > COLS) return false;
   if (y + p.h > ROWS) return false;
 
-  for (let other of pieces) {
-    if (other.id === p.id) continue;
+  for (let o of pieces) {
+    if (o.id === p.id) continue;
 
     if (
-      x < other.x + other.w &&
-      x + p.w > other.x &&
-      y < other.y + other.h &&
-      y + p.h > other.y
+      x < o.x + o.w &&
+      x + p.w > o.x &&
+      y < o.y + o.h &&
+      y + p.h > o.y
     ) return false;
   }
-
   return true;
 }
 
+/* =========================
+   WIN
+========================= */
+
 function checkWin() {
-  let red = pieces.find(p => p.color === "red");
+  const red = pieces.find(p => p.color === "red");
 
   if (red.y + red.h === ROWS) {
-    victoryScreen.classList.remove("hidden");
+    document.getElementById("victoryScreen").classList.remove("hidden");
   }
 }
 
-resetBtn.onclick = loadLevel;
+/* =========================
+   BUTTONS
+========================= */
 
-menuBtn.onclick = () => {
-  gameScreen.classList.add("hidden");
-  victoryScreen.classList.add("hidden");
-  menuScreen.classList.remove("hidden");
+document.getElementById("startBtn").onclick = startGame;
+
+document.getElementById("resetBtn").onclick = loadLevel;
+
+document.getElementById("menuBtn").onclick = () => {
+  document.getElementById("gameScreen").classList.add("hidden");
+  document.getElementById("menuScreen").classList.remove("hidden");
 };
 
-nextLevelBtn.onclick = () => {
-  victoryScreen.classList.add("hidden");
+document.getElementById("nextLevelBtn").onclick = () => {
+  document.getElementById("victoryScreen").classList.add("hidden");
   loadLevel();
 };
 
-startBtn.onclick = startGame;
-
-setupLevels();
