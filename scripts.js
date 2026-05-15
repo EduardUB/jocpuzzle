@@ -1,10 +1,9 @@
 const COLS = 4;
 const ROWS = 5;
-const CELL_SIZE = 90;
+const CELL = 80;
 
 const board = document.getElementById("board");
 const movesText = document.getElementById("moves");
-const timerText = document.getElementById("timer");
 
 const startBtn = document.getElementById("startBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -17,22 +16,16 @@ const victoryScreen = document.getElementById("victoryScreen");
 
 const levelSelect = document.getElementById("levelSelect");
 
-let currentLevel = 0;
 let pieces = [];
+let currentLevel = 0;
 let moves = 0;
-let timer = 0;
-let timerInterval = null;
-
-/* ===============================
-   SETUP
-=============================== */
 
 function setupLevels() {
-  LEVELS.forEach((level, index) => {
-    const option = document.createElement("option");
-    option.value = index;
-    option.textContent = level.name;
-    levelSelect.appendChild(option);
+  LEVELS.forEach((l, i) => {
+    let opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = l.name;
+    levelSelect.appendChild(opt);
   });
 }
 
@@ -40,203 +33,129 @@ function startGame() {
   currentLevel = Number(levelSelect.value);
   menuScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
-  loadLevel(currentLevel);
+  loadLevel();
 }
 
-function loadLevel(index) {
-  clearBoard();
+function loadLevel() {
+  board.innerHTML = '<div id="exitZone"></div>';
 
-  pieces = JSON.parse(JSON.stringify(LEVELS[index].pieces));
-
+  pieces = JSON.parse(JSON.stringify(LEVELS[currentLevel].pieces));
   moves = 0;
-  movesText.textContent = moves;
-
-  startTimer();
+  movesText.textContent = 0;
 
   pieces.forEach(createPiece);
 }
 
-/* ===============================
-   BOARD
-=============================== */
-
-function clearBoard() {
-  document.querySelectorAll(".piece").forEach(p => p.remove());
-}
-
-function createPiece(piece) {
+function createPiece(p) {
   const el = document.createElement("div");
+  el.className = "piece " + p.color;
 
-  el.classList.add("piece", piece.color);
+  el.style.width = p.w * CELL + "px";
+  el.style.height = p.h * CELL + "px";
 
-  el.style.width = `${piece.w * CELL_SIZE}px`;
-  el.style.height = `${piece.h * CELL_SIZE}px`;
-
-  updatePiecePosition(el, piece);
-  addInput(el, piece);
+  update(el, p);
+  addInput(el, p);
 
   board.appendChild(el);
 }
 
-function updatePiecePosition(el, piece) {
-  el.style.left = `${piece.x * CELL_SIZE}px`;
-  el.style.top = `${piece.y * CELL_SIZE}px`;
+function update(el, p) {
+  el.style.left = p.x * CELL + "px";
+  el.style.top = p.y * CELL + "px";
 }
 
-/* ===============================
-   INPUT (SWIPE MILLORAT)
-=============================== */
-
-function addInput(el, piece) {
-  let startX = 0;
-  let startY = 0;
+function addInput(el, p) {
+  let sx, sy;
 
   el.addEventListener("pointerdown", e => {
-    startX = e.clientX;
-    startY = e.clientY;
+    sx = e.clientX;
+    sy = e.clientY;
 
-    function pointerUp(ev) {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
+    function up(ev) {
+      let dx = ev.clientX - sx;
+      let dy = ev.clientY - sy;
 
-      handleSwipe(piece, el, dx, dy);
+      movePiece(p, el, dx, dy);
 
-      window.removeEventListener("pointerup", pointerUp);
+      window.removeEventListener("pointerup", up);
     }
 
-    window.addEventListener("pointerup", pointerUp);
+    window.addEventListener("pointerup", up);
   });
 }
 
-/* ===============================
-   MOVIMENT FLUÏT (KEY FEATURE)
-=============================== */
-
-function handleSwipe(piece, el, dx, dy) {
-  const threshold = 20;
-
-  if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
-
-  let dirX = 0;
-  let dirY = 0;
+function movePiece(p, el, dx, dy) {
+  let dirX = 0, dirY = 0;
 
   if (Math.abs(dx) > Math.abs(dy)) {
-    if (piece.direction === "vertical") return;
+    if (p.direction === "vertical") return;
     dirX = dx > 0 ? 1 : -1;
   } else {
-    if (piece.direction === "horizontal") return;
+    if (p.direction === "horizontal") return;
     dirY = dy > 0 ? 1 : -1;
   }
 
-  let newX = piece.x;
-  let newY = piece.y;
+  let nx = p.x;
+  let ny = p.y;
 
-  // 🔥 mou fins al límit
-  while (true) {
-    const nextX = newX + dirX;
-    const nextY = newY + dirY;
-
-    if (!isValidMove(piece, nextX, nextY)) break;
-
-    newX = nextX;
-    newY = nextY;
+  while (isValid(p, nx + dirX, ny + dirY)) {
+    nx += dirX;
+    ny += dirY;
   }
 
-  // si no s’ha mogut, sortir
-  if (newX === piece.x && newY === piece.y) return;
+  if (nx === p.x && ny === p.y) return;
 
-  piece.x = newX;
-  piece.y = newY;
+  p.x = nx;
+  p.y = ny;
 
-  updatePiecePosition(el, piece);
+  update(el, p);
 
   moves++;
   movesText.textContent = moves;
 
-  checkVictory();
+  checkWin();
 }
 
-/* ===============================
-   COL·LISIONS
-=============================== */
+function isValid(p, x, y) {
+  if (x < 0 || y < 0) return false;
+  if (x + p.w > COLS) return false;
+  if (y + p.h > ROWS) return false;
 
-function isValidMove(currentPiece, newX, newY) {
-  if (newX < 0 || newY < 0) return false;
-  if (newX + currentPiece.w > COLS) return false;
-  if (newY + currentPiece.h > ROWS) return false;
+  for (let other of pieces) {
+    if (other.id === p.id) continue;
 
-  for (const piece of pieces) {
-    if (piece.id === currentPiece.id) continue;
-
-    const overlap =
-      newX < piece.x + piece.w &&
-      newX + currentPiece.w > piece.x &&
-      newY < piece.y + piece.h &&
-      newY + currentPiece.h > piece.y;
-
-    if (overlap) return false;
+    if (
+      x < other.x + other.w &&
+      x + p.w > other.x &&
+      y < other.y + other.h &&
+      y + p.h > other.y
+    ) return false;
   }
 
   return true;
 }
 
-/* ===============================
-   VICTÒRIA (ARREGLADA)
-=============================== */
+function checkWin() {
+  let red = pieces.find(p => p.color === "red");
 
-function checkVictory() {
-  const red = pieces.find(p => p.color === "red");
-
-  // 🎯 quan arriba a la sortida real
   if (red.y + red.h === ROWS) {
-    clearInterval(timerInterval);
     victoryScreen.classList.remove("hidden");
   }
 }
 
-/* ===============================
-   TIMER
-=============================== */
+resetBtn.onclick = loadLevel;
 
-function startTimer() {
-  clearInterval(timerInterval);
-
-  timer = 0;
-  timerText.textContent = timer;
-
-  timerInterval = setInterval(() => {
-    timer++;
-    timerText.textContent = timer;
-  }, 1000);
-}
-
-/* ===============================
-   BOTONS
-=============================== */
-
-resetBtn.addEventListener("click", () => {
-  loadLevel(currentLevel);
-});
-
-menuBtn.addEventListener("click", () => {
+menuBtn.onclick = () => {
   gameScreen.classList.add("hidden");
   victoryScreen.classList.add("hidden");
   menuScreen.classList.remove("hidden");
-});
+};
 
-nextLevelBtn.addEventListener("click", () => {
+nextLevelBtn.onclick = () => {
   victoryScreen.classList.add("hidden");
+  loadLevel();
+};
 
-  currentLevel++;
-  if (currentLevel >= LEVELS.length) currentLevel = 0;
-
-  loadLevel(currentLevel);
-});
-
-startBtn.addEventListener("click", startGame);
-
-/* ===============================
-   INIT
-=============================== */
+startBtn.onclick = startGame;
 
 setupLevels();
